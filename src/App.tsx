@@ -103,10 +103,17 @@ function App() {
     <Layout
       notebooks={notebooks}
       activeNotebookId={activeNotebookId ?? ""}
-      onSelectNotebook={(id) => { setActiveNotebookId(id); }}
+      onSelectNotebook={(id) => {
+        if (id === activeNotebookId && selectedNote) {
+          setSelectedNote(null);
+        } else {
+          setActiveNotebookId(id);
+        }
+      }}
       onAddNotebook={handleAddNotebook}
       onRenameNotebook={handleRenameNotebook}
       onDeleteNotebook={handleDeleteNotebook}
+      onReorderNotebooks={(reordered) => setNotebooks(reordered)}
       isDark={isDark}
       onToggleTheme={() => setIsDark((d) => !d)}
       onSignOut={() => supabase.auth.signOut()}

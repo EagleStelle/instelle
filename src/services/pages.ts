@@ -11,6 +11,29 @@ export async function fetchPages(noteId: string): Promise<Page[]> {
   return data;
 }
 
+export async function fetchFirstPageContents(noteIds: string[]): Promise<Record<string, string>> {
+  if (noteIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("pages")
+    .select("*")
+    .in("note_id", noteIds)
+    .order("order");
+  if (error) return {};
+  const map: Record<string, string> = {};
+  for (const page of data) {
+    if (!map[page.note_id]) {
+      const text =
+        page.block_type === "paragraph" ||
+        page.block_type === "bullet" ||
+        page.block_type === "numbered"
+          ? page.content || page.title
+          : page.title || page.content;
+      if (text) map[page.note_id] = text;
+    }
+  }
+  return map;
+}
+
 export async function createPage(
   noteId: string,
   blockType: BlockType,
@@ -38,7 +61,7 @@ export async function createPage(
 
 export async function updatePage(
   id: string,
-  fields: { title?: string; content?: string; checked?: boolean },
+  fields: { title?: string; content?: string; checked?: boolean; order?: number },
 ): Promise<void> {
   const { error } = await supabase.from("pages").update(fields).eq("id", id);
   if (error) throw error;

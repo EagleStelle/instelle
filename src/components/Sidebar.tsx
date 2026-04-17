@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { LuX, LuPencil } from "react-icons/lu";
+import { useCallback, useRef, useState } from "react";
+import { LuGripVertical, LuPencil, LuX } from "react-icons/lu";
 import type { Notebook } from "../types/database";
 import Modal from "./Modal";
 
@@ -10,6 +10,7 @@ export interface SidebarProps {
   onAddNotebook: (name: string) => void;
   onRenameNotebook: (id: string, name: string) => void;
   onDeleteNotebook: (id: string) => void;
+  onReorderNotebooks: (notebooks: Notebook[]) => void;
 }
 
 type ModalState =
@@ -24,8 +25,18 @@ export default function Sidebar({
   onAddNotebook,
   onRenameNotebook,
   onDeleteNotebook,
+  onReorderNotebooks,
 }: SidebarProps) {
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const notebooksRef = useRef(notebooks);
+  notebooksRef.current = notebooks;
+  const touchDragState = useRef<{ fromIndex: number; currentOverIndex: number | null }>({
+    fromIndex: -1,
+    currentOverIndex: null,
+  });
 
   const handleConfirm = (name: string) => {
     if (modal?.mode === "create") {
@@ -37,6 +48,56 @@ export default function Sidebar({
     }
     setModal(null);
   };
+
+  const doReorder = useCallback(
+    (from: number, to: number) => {
+      if (from === to) return;
+      const next = [...notebooksRef.current];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      onReorderNotebooks(next);
+    },
+    [onReorderNotebooks],
+  );
+
+  const startTouchDrag = useCallback(
+    (index: number) => {
+      touchDragState.current = { fromIndex: index, currentOverIndex: null };
+      setDragIndex(index);
+
+      const handleTouchMove = (e: TouchEvent) => {
+        const touch = e.touches[0];
+        for (let i = 0; i < itemRefs.current.length; i++) {
+          const el = itemRefs.current[i];
+          if (!el) continue;
+          const rect = el.getBoundingClientRect();
+          if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+            if (touchDragState.current.currentOverIndex !== i) {
+              touchDragState.current.currentOverIndex = i;
+              setDragOverIndex(i);
+            }
+            break;
+          }
+        }
+      };
+
+      const handleTouchEnd = () => {
+        const { fromIndex, currentOverIndex } = touchDragState.current;
+        if (fromIndex !== -1 && currentOverIndex !== null && fromIndex !== currentOverIndex) {
+          doReorder(fromIndex, currentOverIndex);
+        }
+        setDragIndex(null);
+        setDragOverIndex(null);
+        touchDragState.current = { fromIndex: -1, currentOverIndex: null };
+        window.removeEventListener("touchmove", handleTouchMove);
+        window.removeEventListener("touchend", handleTouchEnd);
+      };
+
+      window.addEventListener("touchmove", handleTouchMove, { passive: true });
+      window.addEventListener("touchend", handleTouchEnd);
+    },
+    [doReorder],
+  );
 
   return (
     <>
@@ -50,7 +111,7 @@ export default function Sidebar({
           </h2>
           <button
             type="button"
-            className="rounded-xl bg-mauve px-3 py-1 text-sm font-semibold text-frost transition-colors hover:bg-eggplant dark:hover:bg-eggplant"
+            className="rounded-lg bg-mauve px-3 py-1 text-sm font-semibold text-eggplant transition-colors hover:bg-eggplant hover:text-frost"
             onClick={() => setModal({ mode: "create" })}
           >
             + New
@@ -58,19 +119,53 @@ export default function Sidebar({
         </div>
         <nav className="max-h-72 overflow-x-hidden overflow-y-auto pr-1 md:min-h-0 md:max-h-none md:flex-1">
           <ul className="m-0 grid list-none gap-1.5 p-0">
-            {notebooks.map((nb) => {
+            {notebooks.map((nb, i) => {
               const isActive = nb.id === activeNotebookId;
+              const isDraggingThis = dragIndex === i;
+              const isDragOverThis =
+                dragOverIndex === i && dragIndex !== null && dragIndex !== i;
+
+              const itemCls = [
+                "group flex items-center gap-1 rounded-lg border px-2 py-1.5 transition-all",
+                isDraggingThis ? "opacity-40 scale-[0.98]" : "",
+                isDragOverThis
+                  ? "border-mauve/50 bg-mauve/10 dark:bg-mauve/10"
+                  : isActive
+                    ? "border-eggplant/25 bg-eggplant dark:border-blush/40 dark:bg-blush"
+                    : "border-mauve/20 bg-white hover:border-mauve/40 dark:border-mauve/20 dark:bg-[#2d2238] dark:hover:border-mauve/40 dark:hover:bg-[#352840]",
+              ]
+                .filter(Boolean)
+                .join(" ");
 
               return (
-                <li key={nb.id}>
-                  <div
-                    className={[
-                      "flex items-center gap-1 rounded-xl border px-2 py-1.5 transition-all",
-                      isActive
-                        ? "border-eggplant/25 bg-eggplant dark:border-blush/40 dark:bg-blush"
-                        : "border-mauve/20 bg-white hover:border-mauve/40 dark:border-mauve/20 dark:bg-[#2d2238] dark:hover:border-mauve/40 dark:hover:bg-[#352840]",
-                    ].join(" ")}
-                  >
+                <li
+                  key={nb.id}
+                  ref={(el) => { itemRefs.current[i] = el; }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dragOverIndex !== i) setDragOverIndex(i);
+                  }}
+                  onDrop={() => {
+                    if (dragIndex !== null && dragIndex !== i) doReorder(dragIndex, i);
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                >
+                  <div className={itemCls}>
+                    <div
+                      className={[
+                        "flex shrink-0 cursor-grab items-center justify-center self-stretch px-0.5 opacity-0 transition-opacity select-none touch-none group-hover:opacity-100 active:cursor-grabbing",
+                        isActive
+                          ? "text-petal/50 hover:text-petal dark:text-eggplant/50 dark:hover:text-eggplant"
+                          : "text-mauve/40 hover:text-mauve",
+                      ].join(" ")}
+                      draggable
+                      onDragStart={(e) => { e.stopPropagation(); setDragIndex(i); }}
+                      onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                      onTouchStart={(e) => { e.stopPropagation(); startTouchDrag(i); }}
+                    >
+                      <LuGripVertical size={10} />
+                    </div>
                     <button
                       type="button"
                       className={[

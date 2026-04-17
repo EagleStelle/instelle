@@ -13,22 +13,22 @@ export default function Header({ isDark, onToggleTheme, onSignOut }: HeaderProps
         Instelle
       </h1>
       <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={onToggleTheme}
-        className="flex items-center gap-2 rounded-xl border border-mauve/50 px-3 py-1.5 text-sm font-medium text-frost/80 transition-colors hover:border-mauve hover:text-frost"
-        aria-label="Toggle theme"
-      >
-        {isDark ? <LuSun size={15} /> : <LuMoon size={15} />}
-        {isDark ? "Light" : "Dark"}
-      </button>
-      <button
-        type="button"
-        onClick={onSignOut}
-        className="rounded-xl border border-petal/20 px-3 py-1.5 text-sm font-medium text-petal/70 transition-colors hover:border-petal/40 hover:bg-petal/10 hover:text-petal"
-      >
-        Sign out
-      </button>
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className="flex items-center gap-2 rounded-lg border border-mauve/40 bg-frost/10 px-3 py-1.5 text-sm font-medium text-frost/80 transition-colors hover:bg-frost/20 hover:text-frost"
+          aria-label="Toggle theme"
+        >
+          {isDark ? <LuSun size={15} /> : <LuMoon size={15} />}
+          {isDark ? "Light" : "Dark"}
+        </button>
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="rounded-lg border border-petal/25 bg-petal/10 px-3 py-1.5 text-sm font-medium text-petal/80 transition-colors hover:bg-petal/20 hover:text-petal"
+        >
+          Sign out
+        </button>
       </div>
     </header>
   );

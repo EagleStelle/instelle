@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { LuPlus, LuTrash2 } from "react-icons/lu";
+import { LuTrash2 } from "react-icons/lu";
 import type { Note } from "../types/database";
 import { fetchNotes, createNote, deleteNote } from "../services/notes";
+import { fetchFirstPageContents } from "../services/pages";
 import Modal from "../components/Modal";
 
 interface NotesGalleryProps {
@@ -18,11 +19,16 @@ export default function NotesGallery({ notebookId, notebookTitle, onSelectNote }
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [firstContents, setFirstContents] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setLoading(true);
     fetchNotes(notebookId)
-      .then(setNotes)
+      .then(async (fetched) => {
+        setNotes(fetched);
+        const contents = await fetchFirstPageContents(fetched.map((n) => n.id));
+        setFirstContents(contents);
+      })
       .finally(() => setLoading(false));
   }, [notebookId]);
 
@@ -43,16 +49,15 @@ export default function NotesGallery({ notebookId, notebookTitle, onSelectNote }
 
   return (
     <>
-      <div className="mx-auto max-w-5xl">
+      <div className="w-full">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-eggplant dark:text-frost">{notebookTitle}</h2>
+          <h2 className="text-3xl font-bold text-eggplant dark:text-frost">{notebookTitle}</h2>
           <button
             type="button"
             onClick={() => setModal({ mode: "create" })}
-            className="flex items-center gap-1.5 rounded-xl bg-mauve px-4 py-2 text-sm font-semibold text-frost transition-colors hover:bg-eggplant"
+            className="rounded-lg bg-mauve px-3 py-1.5 text-sm font-semibold text-eggplant transition-colors hover:bg-eggplant hover:text-frost"
           >
-            <LuPlus size={15} />
-            New Note
+            + New
           </button>
         </div>
 
@@ -64,7 +69,7 @@ export default function NotesGallery({ notebookId, notebookTitle, onSelectNote }
             <button
               type="button"
               onClick={() => setModal({ mode: "create" })}
-              className="rounded-xl bg-mauve px-4 py-2 text-sm font-semibold text-frost transition-colors hover:bg-eggplant"
+              className="rounded-lg bg-mauve px-3 py-1.5 text-sm font-semibold text-eggplant transition-colors hover:bg-eggplant hover:text-frost"
             >
               Create first note
             </button>
@@ -74,23 +79,28 @@ export default function NotesGallery({ notebookId, notebookTitle, onSelectNote }
             {notes.map((note) => (
               <div
                 key={note.id}
-                className="group relative flex h-36 cursor-pointer flex-col rounded-2xl border border-mauve/20 bg-white p-4 transition-all hover:border-mauve/50 dark:border-mauve/15 dark:bg-[#2d2238] dark:hover:border-mauve/40"
+                className="group relative flex min-h-32 cursor-pointer flex-col rounded-lg border border-mauve/20 bg-white p-4 transition-all hover:border-mauve/50 dark:border-mauve/15 dark:bg-[#2d2238] dark:hover:border-mauve/40"
                 onClick={() => onSelectNote(note)}
               >
-                <h3 className="mb-1 line-clamp-2 text-sm font-semibold text-eggplant dark:text-frost">
+                <h3 className="mb-1.5 line-clamp-1 text-sm font-bold text-eggplant dark:text-frost">
                   {note.title}
                 </h3>
-                <p className="mt-auto text-xs text-mauve/70">{fmt(note.created_at)}</p>
+                {firstContents[note.id] && (
+                  <p className="line-clamp-3 text-xs leading-relaxed text-eggplant/55 dark:text-frost/55">
+                    {firstContents[note.id]}
+                  </p>
+                )}
+                <p className="mt-auto pt-2 text-xs text-mauve/70">{fmt(note.created_at)}</p>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setModal({ mode: "delete", noteId: note.id, noteTitle: note.title });
                   }}
-                  className="absolute right-3 top-3 rounded-lg p-1 text-mauve/30 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
+                  className="absolute right-2.5 top-2.5 rounded-lg p-1 text-mauve/20 opacity-0 transition-all hover:bg-red-50 hover:text-red-400 dark:hover:bg-red-900/20 group-hover:opacity-100"
                   aria-label={`Delete ${note.title}`}
                 >
-                  <LuTrash2 size={13} />
+                  <LuTrash2 size={12} />
                 </button>
               </div>
             ))}
