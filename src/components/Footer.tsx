@@ -4,7 +4,7 @@ export default function Footer() {
   const { footerContent } = useFooterContent();
   if (!footerContent) return null;
   return (
-    <footer className="border-t border-mauve/20 bg-blush/10 px-4 py-2.5 dark:border-mauve/15 dark:bg-[#2d2238]/60">
+    <footer className="border-t border-eggplant/25 bg-[#4a355a] px-4 py-3 dark:border-mauve/30 dark:bg-[#261933]">
       {footerContent}
     </footer>
   );

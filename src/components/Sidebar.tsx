@@ -32,11 +32,23 @@ export default function Sidebar({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
   const notebooksRef = useRef(notebooks);
+  const dragFromIndexRef = useRef<number | null>(null);
+  const dragEndedAtRef = useRef(0);
   notebooksRef.current = notebooks;
-  const touchDragState = useRef<{ fromIndex: number; currentOverIndex: number | null }>({
+  const touchDragState = useRef<{
+    fromIndex: number;
+    currentOverIndex: number | null;
+  }>({
     fromIndex: -1,
     currentOverIndex: null,
   });
+
+  const clearDragState = useCallback(() => {
+    dragFromIndexRef.current = null;
+    setDragIndex(null);
+    setDragOverIndex(null);
+    dragEndedAtRef.current = Date.now();
+  }, []);
 
   const handleConfirm = (name: string) => {
     if (modal?.mode === "create") {
@@ -62,6 +74,7 @@ export default function Sidebar({
 
   const startTouchDrag = useCallback(
     (index: number) => {
+      dragFromIndexRef.current = index;
       touchDragState.current = { fromIndex: index, currentOverIndex: null };
       setDragIndex(index);
 
@@ -83,11 +96,14 @@ export default function Sidebar({
 
       const handleTouchEnd = () => {
         const { fromIndex, currentOverIndex } = touchDragState.current;
-        if (fromIndex !== -1 && currentOverIndex !== null && fromIndex !== currentOverIndex) {
+        if (
+          fromIndex !== -1 &&
+          currentOverIndex !== null &&
+          fromIndex !== currentOverIndex
+        ) {
           doReorder(fromIndex, currentOverIndex);
         }
-        setDragIndex(null);
-        setDragOverIndex(null);
+        clearDragState();
         touchDragState.current = { fromIndex: -1, currentOverIndex: null };
         window.removeEventListener("touchmove", handleTouchMove);
         window.removeEventListener("touchend", handleTouchEnd);
@@ -96,7 +112,7 @@ export default function Sidebar({
       window.addEventListener("touchmove", handleTouchMove, { passive: true });
       window.addEventListener("touchend", handleTouchEnd);
     },
-    [doReorder],
+    [clearDragState, doReorder],
   );
 
   return (
@@ -118,7 +134,14 @@ export default function Sidebar({
           </button>
         </div>
         <nav className="max-h-72 overflow-x-hidden overflow-y-auto pr-1 md:min-h-0 md:max-h-none md:flex-1">
-          <ul className="m-0 grid list-none gap-1.5 p-0">
+          <ul
+            className="m-0 grid list-none gap-1.5 p-0"
+            onDrop={(e) => {
+              e.preventDefault();
+              clearDragState();
+            }}
+            onDragOver={(e) => e.preventDefault()}
+          >
             {notebooks.map((nb, i) => {
               const isActive = nb.id === activeNotebookId;
               const isDraggingThis = dragIndex === i;
@@ -140,15 +163,22 @@ export default function Sidebar({
               return (
                 <li
                   key={nb.id}
-                  ref={(el) => { itemRefs.current[i] = el; }}
+                  ref={(el) => {
+                    itemRefs.current[i] = el;
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    if (dragOverIndex !== i) setDragOverIndex(i);
+                  }}
                   onDragOver={(e) => {
                     e.preventDefault();
                     if (dragOverIndex !== i) setDragOverIndex(i);
                   }}
-                  onDrop={() => {
-                    if (dragIndex !== null && dragIndex !== i) doReorder(dragIndex, i);
-                    setDragIndex(null);
-                    setDragOverIndex(null);
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const from = dragFromIndexRef.current;
+                    if (from !== null && from !== i) doReorder(from, i);
+                    clearDragState();
                   }}
                 >
                   <div className={itemCls}>
@@ -160,9 +190,21 @@ export default function Sidebar({
                           : "text-mauve/40 hover:text-mauve",
                       ].join(" ")}
                       draggable
-                      onDragStart={(e) => { e.stopPropagation(); setDragIndex(i); }}
-                      onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                      onTouchStart={(e) => { e.stopPropagation(); startTouchDrag(i); }}
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        dragFromIndexRef.current = i;
+                        setDragIndex(i);
+                        setDragOverIndex(i);
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", nb.id);
+                      }}
+                      onDragEnd={() => {
+                        clearDragState();
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                        startTouchDrag(i);
+                      }}
                     >
                       <LuGripVertical size={10} />
                     </div>
@@ -174,7 +216,10 @@ export default function Sidebar({
                           ? "text-petal dark:text-eggplant"
                           : "text-eggplant dark:text-frost",
                       ].join(" ")}
-                      onClick={() => onSelectNotebook(nb.id)}
+                      onClick={() => {
+                        if (Date.now() - dragEndedAtRef.current < 180) return;
+                        onSelectNotebook(nb.id);
+                      }}
                     >
                       {nb.title}
                     </button>
@@ -187,7 +232,11 @@ export default function Sidebar({
                           : "text-mauve/50 hover:text-mauve dark:text-frost/40 dark:hover:text-frost",
                       ].join(" ")}
                       onClick={() =>
-                        setModal({ mode: "edit", notebookId: nb.id, currentName: nb.title })
+                        setModal({
+                          mode: "edit",
+                          notebookId: nb.id,
+                          currentName: nb.title,
+                        })
                       }
                       aria-label={`Rename ${nb.title}`}
                     >
@@ -202,7 +251,11 @@ export default function Sidebar({
                           : "text-mauve/60 hover:text-eggplant dark:text-frost/50 dark:hover:text-frost",
                       ].join(" ")}
                       onClick={() =>
-                        setModal({ mode: "delete", notebookId: nb.id, currentName: nb.title })
+                        setModal({
+                          mode: "delete",
+                          notebookId: nb.id,
+                          currentName: nb.title,
+                        })
                       }
                       aria-label={`Delete ${nb.title}`}
                     >
@@ -235,7 +288,11 @@ export default function Sidebar({
           initialValue={modal.mode === "edit" ? modal.currentName : ""}
           placeholder={modal.mode === "delete" ? "confirm" : "Notebook name..."}
           confirmLabel={
-            modal.mode === "create" ? "Create" : modal.mode === "edit" ? "Save" : "Delete"
+            modal.mode === "create"
+              ? "Create"
+              : modal.mode === "edit"
+                ? "Save"
+                : "Delete"
           }
           requiredValue={modal.mode === "delete" ? "confirm" : undefined}
           danger={modal.mode === "delete"}

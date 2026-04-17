@@ -40,11 +40,13 @@ export interface Database {
         Row: Notebook;
         Insert: { user_id: string; title: string };
         Update: { title?: string };
+        Relationships: [];
       };
       notes: {
         Row: Note;
         Insert: { user_id: string; notebook_id: string; title: string };
         Update: { title?: string };
+        Relationships: [];
       };
       pages: {
         Row: Page;
@@ -64,7 +66,12 @@ export interface Database {
           checked?: boolean;
           order?: number;
         };
+        Relationships: [];
       };
     };
+    Views: {};
+    Functions: {};
+    Enums: {};
+    CompositeTypes: {};
   };
 }
