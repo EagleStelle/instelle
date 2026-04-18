@@ -8,6 +8,7 @@ import { FooterContentProvider } from "../context/footerContent";
 interface LayoutProps extends PropsWithChildren, SidebarProps {
   isDark: boolean;
   onToggleTheme: () => void;
+  onOpenSettings: () => void;
   onSignOut: () => void;
   onOpenGlobalSearch: () => void;
 }
@@ -23,6 +24,7 @@ export default function Layout({
   onReorderNotebooks,
   isDark,
   onToggleTheme,
+  onOpenSettings,
   onSignOut,
   onOpenGlobalSearch,
 }: LayoutProps) {
@@ -50,6 +52,7 @@ export default function Layout({
         <Header
           isDark={isDark}
           onToggleTheme={onToggleTheme}
+          onOpenSettings={onOpenSettings}
           onSignOut={onSignOut}
           isMobileSidebarOpen={isMobileSidebarOpen}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen((open) => !open)}

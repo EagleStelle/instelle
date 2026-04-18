@@ -1,8 +1,9 @@
-import { LuLogOut, LuMenu, LuMoon, LuSearch, LuSun, LuX } from "react-icons/lu";
+import { LuLogOut, LuMenu, LuMoon, LuSearch, LuSettings, LuSun, LuX } from "react-icons/lu";
 
 interface HeaderProps {
   isDark: boolean;
   onToggleTheme: () => void;
+  onOpenSettings: () => void;
   onSignOut: () => void;
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: () => void;
@@ -15,6 +16,7 @@ const btn =
 export default function Header({
   isDark,
   onToggleTheme,
+  onOpenSettings,
   onSignOut,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
@@ -52,6 +54,15 @@ export default function Header({
         >
           {isDark ? <LuSun size={15} className="shrink-0" /> : <LuMoon size={15} className="shrink-0" />}
           <span className="hidden md:inline">{isDark ? "Light" : "Dark"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          className={btn}
+          aria-label="Open settings"
+        >
+          <LuSettings size={15} className="shrink-0" />
+          <span className="hidden md:inline">Settings</span>
         </button>
         <button
           type="button"

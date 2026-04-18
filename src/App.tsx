@@ -5,6 +5,7 @@ import { supabase } from "./lib/supabase";
 import Layout from "./components/Layout";
 import Auth from "./components/Auth";
 import ResetPassword from "./components/ResetPassword";
+import SettingsPasswordModal from "./components/SettingsPasswordModal";
 import GlobalSearch from "./components/GlobalSearch";
 import NotesGallery from "./pages/NotesGallery";
 import NoteView from "./pages/NoteView";
@@ -22,6 +23,14 @@ interface NoteDraftActions {
 }
 
 function App() {
+  const isRecoveryUrl = () => {
+    const isResetPath = window.location.pathname === "/reset-password";
+    const hasRecoveryHash =
+      window.location.hash.includes("type=recovery") ||
+      window.location.search.includes("type=recovery");
+    return isResetPath || hasRecoveryHash;
+  };
+
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
@@ -29,11 +38,12 @@ function App() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [hasUnsavedNoteChanges, setHasUnsavedNoteChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [isRecovery, setIsRecovery] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(isRecoveryUrl);
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const noteDraftActionsRef = useRef<NoteDraftActions | null>(null);
   const pendingNavigationRef = useRef<(() => void) | null>(null);
   const notebookOrderKey = session?.user
@@ -91,6 +101,9 @@ function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isRecoveryUrl()) {
+        setIsRecovery(true);
+      }
       setSession(session);
       setAuthLoading(false);
     });
@@ -98,9 +111,9 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
+      if (event === "PASSWORD_RECOVERY" || isRecoveryUrl()) {
         setIsRecovery(true);
-      } else {
+      } else if (event === "SIGNED_OUT") {
         setIsRecovery(false);
       }
       setSession(session);
@@ -249,7 +262,15 @@ function App() {
   const activeNotebook = notebooks.find((nb) => nb.id === activeNotebookId);
 
   if (authLoading) return null;
-  if (isRecovery) return <ResetPassword onDone={() => setIsRecovery(false)} />;
+  if (isRecovery)
+    return (
+      <ResetPassword
+        onDone={() => {
+          setIsRecovery(false);
+          window.history.replaceState({}, "", "/");
+        }}
+      />
+    );
   if (!session) return <Auth />;
 
   return (
@@ -275,6 +296,7 @@ function App() {
         }}
         isDark={isDark}
         onToggleTheme={() => setIsDark((d) => !d)}
+        onOpenSettings={() => setSettingsOpen(true)}
         onSignOut={() =>
           requestGuardedNavigation(() => {
             void supabase.auth.signOut();
@@ -360,6 +382,8 @@ function App() {
           </div>
         </div>
       )}
+
+      {settingsOpen && <SettingsPasswordModal onClose={() => setSettingsOpen(false)} />}
     </>
   );
 }
