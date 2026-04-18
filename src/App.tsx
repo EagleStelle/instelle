@@ -15,6 +15,7 @@ import {
   createNotebook,
   updateNotebook,
   deleteNotebook,
+  reorderNotebooks,
 } from "./services/notebooks";
 
 interface NoteDraftActions {
@@ -46,53 +47,6 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const noteDraftActionsRef = useRef<NoteDraftActions | null>(null);
   const pendingNavigationRef = useRef<(() => void) | null>(null);
-  const notebookOrderKey = session?.user
-    ? `instelle:notebook-order:${session.user.id}`
-    : null;
-
-  const sortNotebooksByStoredOrder = useCallback(
-    (items: Notebook[]): Notebook[] => {
-      if (!notebookOrderKey) return items;
-
-      try {
-        const raw = localStorage.getItem(notebookOrderKey);
-        if (!raw) return items;
-
-        const orderedIds = JSON.parse(raw);
-        if (!Array.isArray(orderedIds)) return items;
-
-        const rank = new Map<string, number>();
-        orderedIds.forEach((id, index) => {
-          if (typeof id === "string") rank.set(id, index);
-        });
-
-        return [...items].sort((a, b) => {
-          const aRank = rank.get(a.id);
-          const bRank = rank.get(b.id);
-          if (aRank === undefined && bRank === undefined) {
-            return a.created_at.localeCompare(b.created_at);
-          }
-          if (aRank === undefined) return 1;
-          if (bRank === undefined) return -1;
-          return aRank - bRank;
-        });
-      } catch {
-        return items;
-      }
-    },
-    [notebookOrderKey],
-  );
-
-  const persistNotebookOrder = useCallback(
-    (items: Notebook[]) => {
-      if (!notebookOrderKey) return;
-      localStorage.setItem(
-        notebookOrderKey,
-        JSON.stringify(items.map((nb) => nb.id)),
-      );
-    },
-    [notebookOrderKey],
-  );
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -132,11 +86,10 @@ function App() {
     }
 
     fetchNotebooks().then((data) => {
-      const ordered = sortNotebooksByStoredOrder(data);
-      setNotebooks(ordered);
-      if (ordered.length > 0) setActiveNotebookId(ordered[0].id);
+      setNotebooks(data);
+      if (data.length > 0) setActiveNotebookId(data[0].id);
     });
-  }, [session, sortNotebooksByStoredOrder]);
+  }, [session]);
 
   useEffect(() => {
     setSelectedNote(null);
@@ -210,11 +163,7 @@ function App() {
 
   const handleAddNotebook = async (title: string) => {
     const nb = await createNotebook(title);
-    setNotebooks((prev) => {
-      const next = [...prev, nb];
-      persistNotebookOrder(next);
-      return next;
-    });
+    setNotebooks((prev) => [...prev, nb]);
     setActiveNotebookId(nb.id);
   };
 
@@ -230,7 +179,9 @@ function App() {
     await deleteNotebook(id);
     const remaining = notebooks.filter((nb) => nb.id !== id);
     setNotebooks(remaining);
-    persistNotebookOrder(remaining);
+    void reorderNotebooks(remaining).catch((error) => {
+      console.error("Failed to persist notebook order after delete", error);
+    });
     if (id === activeNotebookId) {
       setActiveNotebookId(remaining[0]?.id ?? null);
       setSelectedNote(null);
@@ -292,7 +243,9 @@ function App() {
         onDeleteNotebook={handleDeleteNotebook}
         onReorderNotebooks={(reordered) => {
           setNotebooks(reordered);
-          persistNotebookOrder(reordered);
+          void reorderNotebooks(reordered).catch((error) => {
+            console.error("Failed to persist notebook order", error);
+          });
         }}
         isDark={isDark}
         onToggleTheme={() => setIsDark((d) => !d)}
@@ -383,7 +336,9 @@ function App() {
         </div>
       )}
 
-      {settingsOpen && <SettingsPasswordModal onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsPasswordModal onClose={() => setSettingsOpen(false)} />
+      )}
     </>
   );
 }

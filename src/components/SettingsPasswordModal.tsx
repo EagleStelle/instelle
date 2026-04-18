@@ -69,7 +69,9 @@ export default function SettingsPasswordModal({
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to update password.");
+      setError(
+        err instanceof Error ? err.message : "Unable to update password.",
+      );
     } finally {
       setLoading(false);
     }
@@ -117,9 +119,13 @@ export default function SettingsPasswordModal({
             className="w-full rounded-xl border border-mauve bg-white px-4 py-2.5 text-sm text-eggplant outline-none focus:border-eggplant dark:bg-petal"
           />
 
-          {error && <p className="text-xs text-red-600 dark:text-red-300">{error}</p>}
+          {error && (
+            <p className="text-xs text-red-600 dark:text-red-300">{error}</p>
+          )}
           {success && (
-            <p className="text-xs text-green-700 dark:text-green-300">{success}</p>
+            <p className="text-xs text-green-700 dark:text-green-300">
+              {success}
+            </p>
           )}
 
           <div className="mt-1 flex gap-2">

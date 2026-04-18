@@ -2,6 +2,7 @@ export interface Notebook {
   id: string;
   user_id: string;
   title: string;
+  order: number;
   created_at: string;
 }
 
@@ -38,8 +39,8 @@ export interface Database {
     Tables: {
       notebooks: {
         Row: Notebook;
-        Insert: { user_id: string; title: string };
-        Update: { title?: string };
+        Insert: { user_id: string; title: string; order: number };
+        Update: { title?: string; order?: number };
         Relationships: [];
       };
       notes: {

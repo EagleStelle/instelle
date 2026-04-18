@@ -1,4 +1,12 @@
-import { LuLogOut, LuMenu, LuMoon, LuSearch, LuSettings, LuSun, LuX } from "react-icons/lu";
+import {
+  LuLogOut,
+  LuMenu,
+  LuMoon,
+  LuSearch,
+  LuSettings,
+  LuSun,
+  LuX,
+} from "react-icons/lu";
 
 interface HeaderProps {
   isDark: boolean;
@@ -34,7 +42,11 @@ export default function Header({
           className={`${btn} md:hidden`}
           aria-label={isMobileSidebarOpen ? "Hide notebooks" : "Show notebooks"}
         >
-          {isMobileSidebarOpen ? <LuX size={15} className="shrink-0" /> : <LuMenu size={15} className="shrink-0" />}
+          {isMobileSidebarOpen ? (
+            <LuX size={15} className="shrink-0" />
+          ) : (
+            <LuMenu size={15} className="shrink-0" />
+          )}
         </button>
         <button
           type="button"
@@ -52,7 +64,11 @@ export default function Header({
           className={btn}
           aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
         >
-          {isDark ? <LuSun size={15} className="shrink-0" /> : <LuMoon size={15} className="shrink-0" />}
+          {isDark ? (
+            <LuSun size={15} className="shrink-0" />
+          ) : (
+            <LuMoon size={15} className="shrink-0" />
+          )}
           <span className="hidden md:inline">{isDark ? "Light" : "Dark"}</span>
         </button>
         <button
