@@ -47,6 +47,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const noteDraftActionsRef = useRef<NoteDraftActions | null>(null);
   const pendingNavigationRef = useRef<(() => void) | null>(null);
+  const userId = session?.user?.id ?? null;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -78,7 +79,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
       setNotebooks([]);
       setActiveNotebookId(null);
       setSelectedNote(null);
@@ -89,7 +90,7 @@ function App() {
       setNotebooks(data);
       if (data.length > 0) setActiveNotebookId(data[0].id);
     });
-  }, [session]);
+  }, [userId]);
 
   useEffect(() => {
     setSelectedNote(null);
