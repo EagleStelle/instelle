@@ -23,7 +23,10 @@ export default function Auth() {
     setLoading(true);
     try {
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
         if (error) throw error;
       } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({ email, password });
@@ -49,23 +52,27 @@ export default function Auth() {
       : `Password reset link sent to ${email}`;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-frost dark:bg-[#1e1428]">
-      <div className="w-full max-w-sm rounded-2xl border border-mauve/20 bg-white p-8 dark:bg-[#2d2238]">
+    <div className="flex min-h-screen items-center justify-center bg-frost dark:bg-eggplant">
+      <div className="w-full max-w-sm rounded-2xl border border-mauve bg-white p-8 dark:bg-mauve">
         {sent ? (
           <div className="text-center">
-            <h2 className="mb-2 text-xl font-bold text-eggplant dark:text-frost">Check your email</h2>
+            <h2 className="mb-2 text-xl font-bold text-eggplant dark:text-frost">
+              Check your email
+            </h2>
             <p className="mb-4 text-sm text-mauve">{sentMessage}</p>
             <button
               type="button"
               onClick={() => reset("login")}
-              className="text-sm font-semibold text-eggplant underline-offset-2 hover:underline dark:text-frost"
+              className="text-sm font-semibold text-eggplant underline-offset-2 hover:underline"
             >
               Back to sign in
             </button>
           </div>
         ) : (
           <>
-            <h1 className="mb-1 text-2xl font-bold text-eggplant dark:text-frost">Instelle</h1>
+            <h1 className="mb-1 text-2xl font-bold text-eggplant dark:text-frost">
+              Instelle
+            </h1>
             <p className="mb-6 text-sm text-mauve">
               {mode === "login" && "Sign in to continue"}
               {mode === "signup" && "Create your account"}
@@ -79,7 +86,7 @@ export default function Auth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-xl border border-mauve/30 bg-frost px-4 py-2.5 text-sm text-eggplant outline-none focus:border-mauve dark:border-mauve/20 dark:bg-eggplant dark:text-frost dark:focus:border-mauve"
+                className="w-full rounded-xl border border-mauve bg-frost px-4 py-2.5 text-sm text-eggplant outline-none focus:border-eggplant dark:bg-petal"
               />
               {mode !== "forgot" && (
                 <input
@@ -88,28 +95,42 @@ export default function Auth() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-mauve/30 bg-frost px-4 py-2.5 text-sm text-eggplant outline-none focus:border-mauve dark:border-mauve/20 dark:bg-eggplant dark:text-frost dark:focus:border-mauve"
+                  className="w-full rounded-xl border border-mauve bg-frost px-4 py-2.5 text-sm text-eggplant outline-none focus:border-eggplant dark:bg-petal"
                 />
               )}
               {error && <p className="text-xs text-red-500">{error}</p>}
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-xl bg-mauve py-2.5 text-sm font-semibold text-frost transition-colors hover:bg-eggplant disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-mauve py-2.5 text-sm font-semibold text-eggplant transition-colors hover:bg-eggplant hover:text-frost disabled:cursor-not-allowed disabled:bg-blush disabled:text-eggplant"
               >
-                {loading ? "..." : mode === "login" ? "Sign in" : mode === "signup" ? "Sign up" : "Send reset link"}
+                {loading
+                  ? "..."
+                  : mode === "login"
+                    ? "Sign in"
+                    : mode === "signup"
+                      ? "Sign up"
+                      : "Send reset link"}
               </button>
             </form>
 
             <div className="mt-4 flex flex-col items-center gap-1">
               {mode === "login" && (
                 <>
-                  <button type="button" onClick={() => reset("forgot")} className="text-xs text-mauve hover:text-eggplant dark:hover:text-frost">
+                  <button
+                    type="button"
+                    onClick={() => reset("forgot")}
+                    className="text-xs text-mauve hover:text-eggplant"
+                  >
                     Forgot password?
                   </button>
                   <p className="text-xs text-mauve">
                     No account?{" "}
-                    <button type="button" onClick={() => reset("signup")} className="font-semibold text-eggplant underline-offset-2 hover:underline dark:text-frost">
+                    <button
+                      type="button"
+                      onClick={() => reset("signup")}
+                      className="font-semibold text-eggplant underline-offset-2 hover:underline"
+                    >
                       Sign up
                     </button>
                   </p>
@@ -117,7 +138,11 @@ export default function Auth() {
               )}
               {(mode === "signup" || mode === "forgot") && (
                 <p className="text-xs text-mauve">
-                  <button type="button" onClick={() => reset("login")} className="font-semibold text-eggplant underline-offset-2 hover:underline dark:text-frost">
+                  <button
+                    type="button"
+                    onClick={() => reset("login")}
+                    className="font-semibold text-eggplant underline-offset-2 hover:underline"
+                  >
                     Back to sign in
                   </button>
                 </p>

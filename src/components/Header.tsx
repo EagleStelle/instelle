@@ -1,33 +1,66 @@
-import { LuSun, LuMoon } from "react-icons/lu";
+import { LuLogOut, LuMenu, LuMoon, LuSearch, LuSun, LuX } from "react-icons/lu";
 
 interface HeaderProps {
   isDark: boolean;
   onToggleTheme: () => void;
   onSignOut: () => void;
+  isMobileSidebarOpen: boolean;
+  onToggleMobileSidebar: () => void;
+  onOpenGlobalSearch: () => void;
 }
 
-export default function Header({ isDark, onToggleTheme, onSignOut }: HeaderProps) {
+const btn =
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-frost bg-mauve text-eggplant transition-colors hover:bg-eggplant hover:border-frost hover:text-frost md:w-auto md:gap-2 md:px-3";
+
+export default function Header({
+  isDark,
+  onToggleTheme,
+  onSignOut,
+  isMobileSidebarOpen,
+  onToggleMobileSidebar,
+  onOpenGlobalSearch,
+}: HeaderProps) {
   return (
-    <header className="relative z-20 flex items-center justify-between border-b border-mauve/30 bg-eggplant px-6 py-4">
+    <header className="relative z-20 flex items-center justify-between border-b border-mauve bg-eggplant px-6 py-4">
       <h1 className="m-0 text-2xl font-bold tracking-wide text-frost">
         Instelle
       </h1>
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={onToggleTheme}
-          className="flex items-center gap-2 rounded-lg border border-mauve/40 bg-frost/10 px-3 py-1.5 text-sm font-medium text-frost/80 transition-colors hover:bg-frost/20 hover:text-frost"
-          aria-label="Toggle theme"
+          onClick={onToggleMobileSidebar}
+          className={`${btn} md:hidden`}
+          aria-label={isMobileSidebarOpen ? "Hide notebooks" : "Show notebooks"}
         >
-          {isDark ? <LuSun size={15} /> : <LuMoon size={15} />}
-          {isDark ? "Light" : "Dark"}
+          {isMobileSidebarOpen ? <LuX size={15} className="shrink-0" /> : <LuMenu size={15} className="shrink-0" />}
+        </button>
+        <button
+          type="button"
+          onClick={onOpenGlobalSearch}
+          className={btn}
+          aria-label="Global search"
+          title="Search (Ctrl+K)"
+        >
+          <LuSearch size={15} className="shrink-0" />
+          <span className="hidden md:inline">Search</span>
+        </button>
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className={btn}
+          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {isDark ? <LuSun size={15} className="shrink-0" /> : <LuMoon size={15} className="shrink-0" />}
+          <span className="hidden md:inline">{isDark ? "Light" : "Dark"}</span>
         </button>
         <button
           type="button"
           onClick={onSignOut}
-          className="rounded-lg border border-petal/25 bg-petal/10 px-3 py-1.5 text-sm font-medium text-petal/80 transition-colors hover:bg-petal/20 hover:text-petal"
+          aria-label="Sign out"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-blush bg-petal text-eggplant transition-colors hover:bg-blush hover:border-mauve hover:text-eggplant md:w-auto md:gap-2 md:px-3"
         >
-          Sign out
+          <LuLogOut size={15} className="shrink-0" />
+          <span className="hidden md:inline">Sign out</span>
         </button>
       </div>
     </header>

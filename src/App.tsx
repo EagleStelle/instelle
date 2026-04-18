@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { LuSave, LuTrash2, LuX } from "react-icons/lu";
 import { supabase } from "./lib/supabase";
 import Layout from "./components/Layout";
 import Auth from "./components/Auth";
 import ResetPassword from "./components/ResetPassword";
+import GlobalSearch from "./components/GlobalSearch";
 import NotesGallery from "./pages/NotesGallery";
 import NoteView from "./pages/NoteView";
 import type { Notebook, Note } from "./types/database";
@@ -31,6 +33,7 @@ function App() {
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const noteDraftActionsRef = useRef<NoteDraftActions | null>(null);
   const pendingNavigationRef = useRef<(() => void) | null>(null);
   const notebookOrderKey = session?.user
@@ -144,6 +147,17 @@ function App() {
     pendingNavigationRef.current = null;
   }, [selectedNote]);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   const requestGuardedNavigation = useCallback(
     (action: () => void) => {
       if (!selectedNote || !hasUnsavedNoteChanges) {
@@ -210,6 +224,28 @@ function App() {
     }
   };
 
+  const handleNavigateToNote = useCallback(
+    (note: Note) => {
+      requestGuardedNavigation(() => {
+        setActiveNotebookId(note.notebook_id);
+        setSelectedNote(note);
+        setGlobalSearchOpen(false);
+      });
+    },
+    [requestGuardedNavigation],
+  );
+
+  const handleNavigateToNotebook = useCallback(
+    (notebookId: string) => {
+      requestGuardedNavigation(() => {
+        setActiveNotebookId(notebookId);
+        setSelectedNote(null);
+        setGlobalSearchOpen(false);
+      });
+    },
+    [requestGuardedNavigation],
+  );
+
   const activeNotebook = notebooks.find((nb) => nb.id === activeNotebookId);
 
   if (authLoading) return null;
@@ -244,6 +280,7 @@ function App() {
             void supabase.auth.signOut();
           })
         }
+        onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
       >
         {selectedNote ? (
           <NoteView
@@ -268,19 +305,28 @@ function App() {
         )}
       </Layout>
 
+      {globalSearchOpen && (
+        <GlobalSearch
+          notebooks={notebooks}
+          onNavigate={handleNavigateToNote}
+          onNavigateToNotebook={handleNavigateToNotebook}
+          onClose={() => setGlobalSearchOpen(false)}
+        />
+      )}
+
       {showUnsavedModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-eggplant/45 p-4 backdrop-blur-sm dark:bg-eggplant/65"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-eggplant/70 p-4"
           onClick={handleStay}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-mauve/25 bg-frost p-5 shadow-xl dark:border-mauve/25 dark:bg-[#2d2238]"
+            className="w-full max-w-md rounded-2xl border-2 border-blush bg-frost p-5 shadow-xl dark:border-orchid dark:bg-plum"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-eggplant dark:text-frost">
+            <h3 className="text-lg font-semibold text-eggplant dark:text-petal">
               Unsaved changes
             </h3>
-            <p className="mt-1 text-sm text-mauve dark:text-mauve/85">
+            <p className="mt-1 text-sm text-mauve dark:text-mauve">
               Save edits before leaving this note?
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -289,22 +335,25 @@ function App() {
                 onClick={() => {
                   void handleSaveAndLeave();
                 }}
-                className="rounded-lg bg-mauve px-3 py-1.5 text-sm font-semibold text-eggplant transition-colors hover:bg-eggplant hover:text-frost"
+                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-mauve bg-mauve px-3 py-1.5 text-sm font-semibold text-frost transition-colors hover:bg-eggplant hover:border-eggplant hover:text-frost dark:border-orchid dark:bg-orchid dark:text-frost dark:hover:bg-plum dark:hover:border-mauve"
               >
-                Save and leave
+                <LuSave size={14} />
+                Save
               </button>
               <button
                 type="button"
                 onClick={handleDiscardAndLeave}
-                className="rounded-lg border border-mauve/35 px-3 py-1.5 text-sm font-medium text-eggplant transition-colors hover:bg-mauve/15 dark:text-frost"
+                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blush bg-white px-3 py-1.5 text-sm font-medium text-eggplant transition-colors hover:border-mauve hover:bg-petal dark:border-mauve dark:bg-void dark:text-petal dark:hover:border-orchid"
               >
+                <LuTrash2 size={14} />
                 Don&apos;t save
               </button>
               <button
                 type="button"
                 onClick={handleStay}
-                className="rounded-lg border border-mauve/35 px-3 py-1.5 text-sm font-medium text-eggplant transition-colors hover:bg-mauve/15 dark:text-frost"
+                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-blush bg-white px-3 py-1.5 text-sm font-medium text-eggplant transition-colors hover:border-mauve hover:bg-petal dark:border-mauve dark:bg-void dark:text-petal dark:hover:border-orchid"
               >
+                <LuX size={14} />
                 Cancel
               </button>
             </div>

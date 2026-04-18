@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { LuGripVertical, LuPencil, LuX } from "react-icons/lu";
+import { LuGripVertical, LuPencil, LuPlus, LuX } from "react-icons/lu";
 import type { Notebook } from "../types/database";
 import Modal from "./Modal";
 
@@ -11,6 +11,8 @@ export interface SidebarProps {
   onRenameNotebook: (id: string, name: string) => void;
   onDeleteNotebook: (id: string) => void;
   onReorderNotebooks: (notebooks: Notebook[]) => void;
+  mobileOpen?: boolean;
+  onRequestCloseMobile?: () => void;
 }
 
 type ModalState =
@@ -26,6 +28,8 @@ export default function Sidebar({
   onRenameNotebook,
   onDeleteNotebook,
   onReorderNotebooks,
+  mobileOpen = false,
+  onRequestCloseMobile,
 }: SidebarProps) {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -118,19 +122,26 @@ export default function Sidebar({
   return (
     <>
       <aside
-        className="relative z-10 w-full shrink-0 border-b border-mauve/20 bg-blush/15 p-4 md:flex md:min-h-0 md:w-80 md:flex-col md:overflow-hidden md:border-b-0 md:border-r dark:border-mauve/15 dark:bg-[#4a3a55]"
+        className={[
+          "absolute left-0 right-0 top-0 z-30 w-full shrink-0 border-b-2 border-blush bg-petal p-4 transition-all duration-200 md:relative md:left-auto md:right-auto md:top-auto md:z-10 md:flex md:min-h-0 md:w-80 md:flex-col md:overflow-hidden md:border-b-0 md:border-r-2 dark:border-orchid dark:bg-dusk",
+          mobileOpen
+            ? "pointer-events-auto visible translate-y-0"
+            : "pointer-events-none invisible -translate-y-3 md:pointer-events-auto md:visible md:translate-y-0",
+        ].join(" ")}
         aria-label="Sidebar navigation"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="m-0 text-xs font-bold uppercase tracking-widest text-eggplant dark:text-blush">
+          <h2 className="m-0 text-sm font-bold uppercase tracking-widest text-eggplant dark:text-petal md:text-base">
             Notebooks
           </h2>
           <button
             type="button"
-            className="rounded-lg bg-mauve px-3 py-1 text-sm font-semibold text-eggplant transition-colors hover:bg-eggplant hover:text-frost"
+            aria-label="New notebook"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-eggplant bg-blush text-sm font-semibold text-eggplant transition-colors hover:bg-mauve hover:border-eggplant hover:text-frost md:w-auto md:gap-1.5 md:px-3 dark:border-petal dark:bg-orchid dark:text-frost dark:hover:bg-plum dark:hover:border-petal dark:hover:text-petal"
             onClick={() => setModal({ mode: "create" })}
           >
-            + New
+            <LuPlus size={14} />
+            <span className="hidden md:inline">New</span>
           </button>
         </div>
         <nav className="max-h-72 overflow-x-hidden overflow-y-auto pr-1 md:min-h-0 md:max-h-none md:flex-1">
@@ -149,13 +160,13 @@ export default function Sidebar({
                 dragOverIndex === i && dragIndex !== null && dragIndex !== i;
 
               const itemCls = [
-                "group flex items-center gap-1 rounded-lg border px-2 py-1.5 transition-all",
-                isDraggingThis ? "opacity-40 scale-[0.98]" : "",
+                "group flex items-center gap-1 rounded-lg border-2 px-2 py-1.5 transition-all",
+                isDraggingThis ? "scale-[0.98] ring-2 ring-mauve dark:ring-orchid" : "",
                 isDragOverThis
-                  ? "border-mauve/50 bg-mauve/10 dark:bg-mauve/10"
+                  ? "border-mauve bg-blush dark:border-orchid dark:bg-plum"
                   : isActive
-                    ? "border-eggplant/25 bg-eggplant dark:border-blush/40 dark:bg-blush"
-                    : "border-mauve/20 bg-white hover:border-mauve/40 dark:border-mauve/20 dark:bg-[#2d2238] dark:hover:border-mauve/40 dark:hover:bg-[#352840]",
+                    ? "border-mauve bg-mauve dark:border-orchid dark:bg-orchid"
+                    : "border-blush bg-white hover:border-mauve dark:border-mauve dark:bg-plum dark:hover:border-orchid",
               ]
                 .filter(Boolean)
                 .join(" ");
@@ -184,10 +195,10 @@ export default function Sidebar({
                   <div className={itemCls}>
                     <div
                       className={[
-                        "flex shrink-0 cursor-grab items-center justify-center self-stretch px-0.5 opacity-0 transition-opacity select-none touch-none group-hover:opacity-100 active:cursor-grabbing",
+                        "invisible flex shrink-0 cursor-grab items-center justify-center self-stretch px-0.5 transition-colors select-none touch-none group-hover:visible active:cursor-grabbing",
                         isActive
-                          ? "text-petal/50 hover:text-petal dark:text-eggplant/50 dark:hover:text-eggplant"
-                          : "text-mauve/40 hover:text-mauve",
+                          ? "text-frost hover:text-blush dark:text-frost dark:hover:text-blush"
+                          : "text-mauve hover:text-eggplant dark:text-mauve dark:hover:text-petal",
                       ].join(" ")}
                       draggable
                       onDragStart={(e) => {
@@ -211,14 +222,15 @@ export default function Sidebar({
                     <button
                       type="button"
                       className={[
-                        "min-w-0 flex-1 truncate rounded-lg px-2 py-1 text-left text-sm font-medium",
+                        "max-w-full min-w-0 flex-1 truncate rounded-lg px-2 py-1 text-left text-sm font-medium",
                         isActive
-                          ? "text-petal dark:text-eggplant"
-                          : "text-eggplant dark:text-frost",
+                          ? "text-frost dark:text-frost"
+                          : "text-eggplant dark:text-petal",
                       ].join(" ")}
                       onClick={() => {
                         if (Date.now() - dragEndedAtRef.current < 180) return;
                         onSelectNotebook(nb.id);
+                        onRequestCloseMobile?.();
                       }}
                     >
                       {nb.title}
@@ -228,8 +240,8 @@ export default function Sidebar({
                       className={[
                         "rounded-lg p-1 transition-colors",
                         isActive
-                          ? "text-petal/50 hover:text-petal dark:text-eggplant/50 dark:hover:text-eggplant"
-                          : "text-mauve/50 hover:text-mauve dark:text-frost/40 dark:hover:text-frost",
+                          ? "text-frost hover:text-blush dark:text-frost dark:hover:text-blush"
+                          : "text-mauve hover:text-eggplant dark:text-mauve dark:hover:text-petal",
                       ].join(" ")}
                       onClick={() =>
                         setModal({
@@ -247,8 +259,8 @@ export default function Sidebar({
                       className={[
                         "rounded-lg p-1 transition-colors",
                         isActive
-                          ? "text-petal/60 hover:text-petal dark:text-eggplant/60 dark:hover:text-eggplant"
-                          : "text-mauve/60 hover:text-eggplant dark:text-frost/50 dark:hover:text-frost",
+                          ? "text-frost hover:text-red-200 dark:text-frost dark:hover:text-red-300"
+                          : "text-mauve hover:text-red-600 dark:text-mauve dark:hover:text-red-400",
                       ].join(" ")}
                       onClick={() =>
                         setModal({

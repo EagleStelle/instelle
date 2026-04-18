@@ -40,3 +40,14 @@ export async function deleteNote(id: string): Promise<void> {
     .eq("id", id);
   if (error) throw error;
 }
+
+export async function searchNotes(query: string): Promise<Note[]> {
+  if (!query.trim()) return [];
+  const { data, error } = await (supabase.from("notes" as any) as any)
+    .select("*")
+    .ilike("title", `%${query}%`)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) return [];
+  return (data ?? []) as Note[];
+}

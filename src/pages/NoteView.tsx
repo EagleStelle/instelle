@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   LuAlignLeft,
   LuArrowLeft,
@@ -9,8 +15,11 @@ import {
   LuHeading2,
   LuList,
   LuListOrdered,
+  LuSave,
+  LuSearch,
   LuSquareCheck,
   LuTrash2,
+  LuX,
 } from "react-icons/lu";
 import type { BlockType, Page } from "../types/database";
 import {
@@ -38,8 +47,31 @@ interface CheckboxItem {
 
 const CHECKBOX_CONTENT_PREFIX = "__checkbox_items__:";
 
+function mergeRefs<T>(
+  ...refs: (React.Ref<T> | null | undefined)[]
+): React.RefCallback<T> {
+  return (value) => {
+    refs.forEach((ref) => {
+      if (!ref) return;
+      if (typeof ref === "function") {
+        ref(value);
+      } else {
+        (ref as React.MutableRefObject<T | null>).current = value;
+      }
+    });
+  };
+}
+
 function clonePages(pages: Page[]): Page[] {
   return pages.map((page) => ({ ...page }));
+}
+
+function blockMatchesSearch(page: Page, query: string): boolean {
+  const q = query.toLowerCase();
+  return (
+    page.title.toLowerCase().includes(q) ||
+    page.content.toLowerCase().includes(q)
+  );
 }
 
 function parseCheckboxItems(
@@ -95,42 +127,47 @@ function toCheckboxFields(items: CheckboxItem[]): {
   };
 }
 
-function AutoTextarea({
-  value,
-  onChange,
-  placeholder,
-  className,
-}: {
+interface AutoTextareaProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   className?: string;
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.style.height = "auto";
-      ref.current.style.height = `${ref.current.scrollHeight}px`;
-    }
-  }, [value]);
-
-  return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      rows={1}
-      className={`overflow-hidden resize-none ${className ?? ""}`}
-    />
-  );
 }
 
+const AutoTextarea = forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
+  function AutoTextarea(
+    { value, onChange, onKeyDown, placeholder, className },
+    forwardedRef,
+  ) {
+    const innerRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+      const el = innerRef.current;
+      if (el) {
+        el.style.height = "auto";
+        el.style.height = `${el.scrollHeight}px`;
+      }
+    }, [value]);
+
+    return (
+      <textarea
+        ref={mergeRefs(innerRef, forwardedRef)}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        rows={1}
+        className={`overflow-hidden resize-none ${className ?? ""}`}
+      />
+    );
+  },
+);
+
 const deleteBtn =
-  "absolute right-2 top-2 rounded-lg p-1 text-mauve/20 opacity-0 transition-all group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-400";
+  "absolute right-2 top-2 rounded-lg border border-blush p-1 text-mauve transition-all hover:bg-petal hover:border-mauve hover:text-red-600 dark:border-plum dark:text-mauve dark:hover:border-orchid dark:hover:bg-void dark:hover:text-red-400";
 const copyBtn =
-  "absolute right-8 top-2 rounded-lg p-1 text-mauve/20 opacity-0 transition-all group-hover:opacity-100 hover:bg-mauve/10 hover:text-mauve";
+  "absolute right-8 top-2 rounded-lg border border-blush p-1 text-mauve transition-all hover:bg-blush hover:border-mauve hover:text-eggplant dark:border-plum dark:text-mauve dark:hover:border-orchid dark:hover:bg-void dark:hover:text-petal";
 
 function BlockArticle({
   page,
@@ -160,6 +197,22 @@ function BlockArticle({
   onTouchStart?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const checkboxInputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const pendingCheckboxFocusRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (page.block_type !== "checkbox") return;
+    const nextIndex = pendingCheckboxFocusRef.current;
+    if (nextIndex === null) return;
+
+    pendingCheckboxFocusRef.current = null;
+    const nextInput = checkboxInputRefs.current[nextIndex];
+    if (!nextInput) return;
+
+    nextInput.focus();
+    const cursorPos = nextInput.value.length;
+    nextInput.setSelectionRange(cursorPos, cursorPos);
+  }, [page.block_type, page.content, page.title]);
 
   const updateFields = (fields: {
     title?: string;
@@ -182,19 +235,21 @@ function BlockArticle({
   };
 
   const inputBase =
-    "w-full bg-transparent outline-none placeholder:text-mauve/30 dark:placeholder:text-mauve/25";
+    "w-full bg-transparent outline-none placeholder:text-mauve";
 
   const articleCls = [
-    "group relative flex rounded-lg border border-mauve/15 bg-white dark:border-mauve/10 dark:bg-[#2d2238] transition-all",
-    isDragging ? "opacity-40 scale-[0.98]" : "",
-    isDragOver ? "border-mauve/50 bg-mauve/5 dark:bg-mauve/5" : "",
+    "group relative flex rounded-lg border-2 bg-white transition-all dark:bg-plum",
+    isDragging ? "scale-[0.98] ring-2 ring-mauve dark:ring-orchid" : "",
+    isDragOver
+      ? "border-mauve bg-blush dark:border-orchid dark:bg-void"
+      : "border-blush dark:border-orchid",
   ]
     .filter(Boolean)
     .join(" ");
 
   const dragHandle = (
     <div
-      className="flex w-5 shrink-0 cursor-grab items-center justify-center self-stretch text-mauve/20 opacity-0 transition-opacity group-hover:opacity-100 select-none touch-none active:cursor-grabbing"
+      className="invisible flex w-5 shrink-0 cursor-grab items-center justify-center self-stretch text-mauve transition-colors group-hover:visible select-none touch-none active:cursor-grabbing dark:text-mauve dark:hover:text-blush"
       draggable
       onDragStart={(e) => {
         e.stopPropagation();
@@ -286,7 +341,7 @@ function BlockArticle({
             value={page.content}
             onChange={(e) => updateFields({ content: e.target.value })}
             placeholder="Write something..."
-            className={`${inputBase} min-h-6 text-sm leading-6 text-eggplant/80 dark:text-frost/80`}
+            className={`${inputBase} min-h-6 text-sm leading-6 text-eggplant dark:text-frost`}
           />
         </div>
       </article>
@@ -307,7 +362,7 @@ function BlockArticle({
           {actionBtns}
           <div className="flex flex-col gap-2">
             {items.map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div key={i} className="flex items-start gap-3">
                 <input
                   type="checkbox"
                   checked={item.checked}
@@ -316,10 +371,12 @@ function BlockArticle({
                     updated[i] = { ...item, checked: e.target.checked };
                     updateItems(updated);
                   }}
-                  className="h-4 w-4 shrink-0 cursor-pointer accent-mauve"
+                  className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-mauve"
                 />
-                <input
-                  type="text"
+                <AutoTextarea
+                  ref={(el) => {
+                    checkboxInputRefs.current[i] = el;
+                  }}
                   value={item.title}
                   onChange={(e) => {
                     const updated = [...items];
@@ -331,20 +388,22 @@ function BlockArticle({
                       e.preventDefault();
                       const updated = [...items];
                       updated.splice(i + 1, 0, { title: "", checked: false });
+                      pendingCheckboxFocusRef.current = i + 1;
                       updateItems(updated);
                     }
                     if (
                       e.key === "Backspace" &&
-                      item.title === "" &&
+                      e.shiftKey &&
                       items.length > 1
                     ) {
                       e.preventDefault();
                       const updated = items.filter((_, idx) => idx !== i);
+                      pendingCheckboxFocusRef.current = Math.max(i - 1, 0);
                       updateItems(updated);
                     }
                   }}
                   placeholder="Task..."
-                  className={`${inputBase} text-sm font-medium text-eggplant dark:text-frost ${item.checked ? "line-through opacity-50" : ""}`}
+                  className={`${inputBase} min-w-0 flex-1 text-sm font-medium leading-normal text-eggplant dark:text-frost ${item.checked ? "line-through text-mauve dark:text-mauve" : ""}`}
                 />
               </div>
             ))}
@@ -366,15 +425,15 @@ function BlockArticle({
             value={page.title}
             onChange={(e) => updateFields({ title: e.target.value })}
             placeholder="List title (optional)..."
-            className={`${inputBase} mb-2 text-sm font-semibold text-eggplant dark:text-frost`}
+            className={`${inputBase} mb-2 text-sm font-semibold text-eggplant dark:text-blush`}
           />
           <div className="flex flex-col gap-1">
             {lines.map((line, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 text-sm text-eggplant/80 dark:text-frost/80"
+                className="flex items-start gap-2 text-sm"
               >
-                <span className="mt-0.5 shrink-0 text-mauve">•</span>
+                <span className="mt-0.5 shrink-0 text-mauve dark:text-orchid">•</span>
                 <input
                   type="text"
                   value={line}
@@ -401,7 +460,7 @@ function BlockArticle({
                     }
                   }}
                   placeholder="Item..."
-                  className={`${inputBase} flex-1 leading-relaxed`}
+                  className={`${inputBase} flex-1 leading-relaxed text-eggplant dark:text-frost`}
                 />
               </div>
             ))}
@@ -423,15 +482,15 @@ function BlockArticle({
             value={page.title}
             onChange={(e) => updateFields({ title: e.target.value })}
             placeholder="List title (optional)..."
-            className={`${inputBase} mb-2 text-sm font-semibold text-eggplant dark:text-frost`}
+            className={`${inputBase} mb-2 text-sm font-semibold text-eggplant dark:text-blush`}
           />
           <div className="flex flex-col gap-1">
             {lines.map((line, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 text-sm text-eggplant/80 dark:text-frost/80"
+                className="flex items-start gap-2 text-sm"
               >
-                <span className="mt-0.5 min-w-5 shrink-0 text-right text-mauve">
+                <span className="mt-0.5 min-w-5 shrink-0 text-right text-mauve dark:text-orchid">
                   {i + 1}.
                 </span>
                 <input
@@ -460,7 +519,7 @@ function BlockArticle({
                     }
                   }}
                   placeholder="Item..."
-                  className={`${inputBase} flex-1 leading-relaxed`}
+                  className={`${inputBase} flex-1 leading-relaxed text-eggplant dark:text-frost`}
                 />
               </div>
             ))}
@@ -487,6 +546,9 @@ const ADD_BLOCKS: { type: BlockType; label: string; icon: React.ReactNode }[] =
     },
   ];
 
+const actionBtn =
+  "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border-2 border-eggplant bg-blush px-3 text-sm font-semibold text-eggplant transition-colors hover:bg-mauve hover:border-eggplant hover:text-frost dark:border-petal dark:bg-orchid dark:text-frost dark:hover:bg-plum dark:hover:border-petal dark:hover:text-petal";
+
 export default function NoteView({
   noteId,
   noteTitle,
@@ -501,6 +563,9 @@ export default function NoteView({
   const [dirtyPageIds, setDirtyPageIds] = useState<Set<string>>(new Set());
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
   const touchDragState = useRef<{
     fromIndex: number;
@@ -580,6 +645,26 @@ export default function NoteView({
     onRegisterDraftActions?.({ save: saveChanges, discard: discardChanges });
     return () => onRegisterDraftActions?.(null);
   }, [discardChanges, onRegisterDraftActions, saveChanges]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (hasUnsavedChanges && !saving) void saveChanges();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => searchInputRef.current?.focus(), 0);
+      }
+      if (e.key === "Escape" && showSearch) {
+        setShowSearch(false);
+        setSearchQuery("");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hasUnsavedChanges, saving, saveChanges, showSearch]);
 
   const doReorder = useCallback((from: number, to: number) => {
     if (from === to) return;
@@ -664,11 +749,12 @@ export default function NoteView({
           <button
             key={type}
             type="button"
+            aria-label={label}
             onClick={() => handleAddBlock(type)}
-            className="flex items-center gap-1.5 rounded-lg border border-frost/55 bg-frost/90 px-3 py-1.5 text-xs font-semibold text-eggplant shadow-sm transition-colors hover:bg-petal dark:border-mauve/45 dark:bg-frost/10 dark:text-frost dark:hover:bg-frost/20"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-eggplant bg-blush text-xs font-semibold text-eggplant transition-colors hover:border-eggplant hover:bg-mauve hover:text-frost md:w-auto md:gap-1.5 md:px-3 dark:border-petal dark:bg-orchid dark:text-frost dark:hover:border-petal dark:hover:bg-plum dark:hover:text-petal"
           >
             {icon}
-            {label}
+            <span className="hidden md:inline">{label}</span>
           </button>
         ))}
       </div>,
@@ -705,24 +791,29 @@ export default function NoteView({
     });
   };
 
+  const matchCount = searchQuery
+    ? pages.filter((p) => blockMatchesSearch(p, searchQuery)).length
+    : 0;
+
   return (
     <div className="w-full">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="mb-6 flex items-center justify-between gap-2 md:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-1.5 rounded-lg border border-mauve/25 bg-mauve/15 px-3 py-1.5 text-sm font-medium text-eggplant transition-colors hover:bg-mauve/30 dark:text-frost"
+            aria-label="Back to notes"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-eggplant bg-blush text-sm font-medium text-eggplant transition-colors hover:bg-mauve hover:border-eggplant hover:text-frost md:w-auto md:gap-1.5 md:px-3 dark:border-petal dark:bg-orchid dark:text-frost dark:hover:bg-plum dark:hover:border-petal dark:hover:text-petal"
           >
-            <LuArrowLeft size={14} />
-            Notes
+            <LuArrowLeft size={14} className="shrink-0" />
+            <span className="hidden md:inline">Notes</span>
           </button>
-          <h2 className="truncate text-3xl font-bold text-eggplant dark:text-frost">
+          <h2 className="min-w-0 truncate text-2xl font-bold text-eggplant dark:text-frost sm:text-3xl">
             {noteTitle}
           </h2>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {hasUnsavedChanges && !saveError && (
             <span className="text-xs font-medium text-mauve">
               Unsaved changes
@@ -739,15 +830,68 @@ export default function NoteView({
           <button
             type="button"
             onClick={() => {
-              void saveChanges();
+              setShowSearch((s) => !s);
+              if (!showSearch)
+                setTimeout(() => searchInputRef.current?.focus(), 0);
+              else setSearchQuery("");
             }}
-            disabled={!hasUnsavedChanges || saving}
-            className="rounded-lg border border-mauve/40 bg-mauve px-3 py-1.5 text-sm font-semibold text-eggplant transition-colors hover:bg-eggplant hover:text-frost disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Find in note"
+            title="Find (Ctrl+F)"
+            className={[
+              "inline-flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border-2 text-sm font-semibold transition-colors md:w-auto md:px-3",
+              showSearch
+                ? "border-eggplant bg-eggplant text-frost dark:border-petal dark:bg-orchid dark:text-frost"
+                : "border-eggplant bg-blush text-eggplant hover:bg-mauve hover:border-eggplant hover:text-frost dark:border-petal dark:bg-orchid dark:text-frost dark:hover:bg-plum dark:hover:border-petal dark:hover:text-petal",
+            ].join(" ")}
           >
-            {saving ? "Saving..." : "Save"}
+            <LuSearch size={14} className="shrink-0" />
+            <span className="hidden md:inline">Find</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void saveChanges()}
+            aria-label={saving ? "Saving changes" : "Save changes"}
+            title="Save (Ctrl+S)"
+            disabled={!hasUnsavedChanges || saving}
+            className={`${actionBtn} w-9 md:w-auto disabled:cursor-not-allowed disabled:border-blush disabled:bg-blush disabled:text-mauve disabled:hover:bg-blush disabled:hover:border-blush disabled:hover:text-mauve dark:disabled:border-plum dark:disabled:bg-plum dark:disabled:text-mauve dark:disabled:hover:bg-plum dark:disabled:hover:border-plum dark:disabled:hover:text-mauve`}
+          >
+            <LuSave size={14} />
+            <span className="hidden md:inline">
+              {saving ? "Saving..." : "Save"}
+            </span>
           </button>
         </div>
       </div>
+
+      {showSearch && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border-2 border-blush bg-white px-3 py-2 dark:border-orchid dark:bg-plum">
+          <LuSearch size={14} className="shrink-0 text-mauve dark:text-orchid" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search blocks..."
+            className="flex-1 bg-transparent text-sm text-eggplant outline-none placeholder:text-mauve dark:text-frost dark:placeholder:text-mauve"
+          />
+          {searchQuery && (
+            <span className="shrink-0 text-xs text-mauve">
+              {matchCount} match{matchCount !== 1 ? "es" : ""}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setShowSearch(false);
+              setSearchQuery("");
+            }}
+            className="shrink-0 rounded p-0.5 text-mauve transition-colors hover:text-eggplant dark:hover:text-petal"
+            aria-label="Close search"
+          >
+            <LuX size={14} />
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-sm text-mauve">Loading...</div>
@@ -758,39 +902,48 @@ export default function NoteView({
               No blocks yet. Add one below.
             </div>
           )}
-          {pages.map((page, i) => (
-            <div
-              key={page.id}
-              ref={(el) => {
-                blockRefs.current[i] = el;
-              }}
-            >
-              <BlockArticle
-                page={page}
-                onDelete={() => handleDeleteBlock(page.id)}
-                onChange={(fields) => handleChange(page.id, fields)}
-                isDragging={dragIndex === i}
-                isDragOver={
-                  dragOverIndex === i && dragIndex !== null && dragIndex !== i
+          {pages.map((page, i) => {
+            const isMatch =
+              showSearch &&
+              searchQuery &&
+              blockMatchesSearch(page, searchQuery);
+            return (
+              <div
+                key={page.id}
+                ref={(el) => {
+                  blockRefs.current[i] = el;
+                }}
+                className={
+                  isMatch ? "rounded-lg ring-2 ring-orchid" : undefined
                 }
-                onDragStart={() => setDragIndex(i)}
-                onDragOver={() => {
-                  if (dragOverIndex !== i) setDragOverIndex(i);
-                }}
-                onDrop={() => {
-                  if (dragIndex !== null && dragIndex !== i)
-                    doReorder(dragIndex, i);
-                  setDragIndex(null);
-                  setDragOverIndex(null);
-                }}
-                onDragEnd={() => {
-                  setDragIndex(null);
-                  setDragOverIndex(null);
-                }}
-                onTouchStart={() => startTouchDrag(i)}
-              />
-            </div>
-          ))}
+              >
+                <BlockArticle
+                  page={page}
+                  onDelete={() => handleDeleteBlock(page.id)}
+                  onChange={(fields) => handleChange(page.id, fields)}
+                  isDragging={dragIndex === i}
+                  isDragOver={
+                    dragOverIndex === i && dragIndex !== null && dragIndex !== i
+                  }
+                  onDragStart={() => setDragIndex(i)}
+                  onDragOver={() => {
+                    if (dragOverIndex !== i) setDragOverIndex(i);
+                  }}
+                  onDrop={() => {
+                    if (dragIndex !== null && dragIndex !== i)
+                      doReorder(dragIndex, i);
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                  onTouchStart={() => startTouchDrag(i)}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

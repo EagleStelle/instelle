@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { LuCheck, LuX } from "react-icons/lu";
 
 interface ModalProps {
   title: string;
@@ -44,18 +45,16 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-eggplant/40 backdrop-blur-sm dark:bg-eggplant/60"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-eggplant"
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-mauve/20 bg-frost p-6 dark:border-mauve/20 dark:bg-[#2d2238]"
+        className="w-full max-w-sm rounded-2xl border border-mauve bg-frost p-6 dark:bg-mauve"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-1 text-lg font-semibold text-eggplant dark:text-frost">
-          {title}
-        </h3>
+        <h3 className="mb-1 text-lg font-semibold text-eggplant">{title}</h3>
         {description && (
-          <p className="mb-4 text-sm text-mauve dark:text-mauve/80">
+          <p className="mb-4 text-sm text-mauve dark:text-eggplant">
             {description}
           </p>
         )}
@@ -67,22 +66,26 @@ export default function Modal({
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
             maxLength={maxLength}
-            className="w-full rounded-xl border border-mauve/30 bg-white px-4 py-2 text-sm text-eggplant outline-none focus:border-mauve dark:border-mauve/20 dark:bg-eggplant dark:text-frost dark:focus:border-mauve"
+            className="w-full rounded-xl border border-mauve bg-white px-4 py-2 text-sm text-eggplant outline-none focus:border-eggplant dark:bg-petal"
           />
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={!isValid}
-              className={`flex-1 rounded-xl py-2 text-sm font-semibold text-frost transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${danger ? "bg-red-600 hover:bg-red-700" : "bg-mauve hover:bg-eggplant"}`}
+              aria-label={confirmLabel}
+              className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed ${danger ? "bg-red-600 text-frost hover:bg-red-700 disabled:bg-red-300" : "bg-mauve text-eggplant hover:bg-eggplant hover:text-frost disabled:bg-blush disabled:text-eggplant"}`}
             >
-              {confirmLabel}
+              <LuCheck size={14} />
+              <span className="hidden md:inline">{confirmLabel}</span>
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 rounded-xl border border-mauve/30 py-2 text-sm font-medium text-eggplant transition-colors hover:border-mauve/60 dark:text-frost dark:hover:border-mauve/60"
+              aria-label="Cancel"
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-mauve py-2 text-sm font-medium text-eggplant transition-colors hover:bg-petal dark:hover:bg-blush"
             >
-              Cancel
+              <LuX size={14} />
+              <span className="hidden md:inline">Cancel</span>
             </button>
           </div>
         </form>
